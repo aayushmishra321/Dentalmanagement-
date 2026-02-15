@@ -25,7 +25,19 @@
 
                 <ul class="nav-links" id="navLinks">
                     <li class="nav-item">
-                        <a href="{% url 'contact' %}">Contact Us</a>
+                        <a href="{% url 'doctor_dashboard' email %}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'doctors' email %}">Schedule</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'doctor_profile' email %}">My Profile</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'notifications' %}">Notifications</a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{% url 'analytics_dashboard' %}">Analytics</a>
                     </li>
                     <li class="nav-item">
                         <a href="{% url 'about' %}">About Us</a>
@@ -128,18 +140,32 @@
                                             </form>
                                         </td>
                                         <td class="actions-cell">
-                                            <form method="post" action="{% url 'doctors' email %}" class="cancel-form">
-                                                {% csrf_token %}
-                                                <input type="hidden" name="form_type" value="email_user">
-                                                <input type="hidden" name="date" value="{{ appointment.appdate }}">
-                                                <input type="hidden" name="time" value="{{ appointment.apptime }}">
-                                                <input type="hidden" name="useremail" value="{{ appointment.useremail }}">
-                                                <input type="hidden" name="doctorname" value="{{ appointment.doctorname }}">
-                                                <button type="submit" class="cancel-btn">
-                                                    <i class="fa-solid fa-times"></i>
-                                                    Cancel
-                                                </button>
-                                            </form>
+                                            <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                                                <a href="{% url 'add_medical_record' appointment.useremail %}" class="action-btn" style="display: inline-block; padding: 6px 12px; background: #4CAF50; color: white; text-decoration: none; border-radius: 4px; font-size: 0.85rem;">
+                                                    <i class="fa-solid fa-notes-medical"></i>
+                                                    Medical Record
+                                                </a>
+                                                <a href="{% url 'create_treatment_plan' appointment.useremail %}" class="action-btn" style="display: inline-block; padding: 6px 12px; background: #2196F3; color: white; text-decoration: none; border-radius: 4px; font-size: 0.85rem;">
+                                                    <i class="fa-solid fa-clipboard-list"></i>
+                                                    Treatment Plan
+                                                </a>
+                                                <a href="{% url 'mark_no_show' appointment.id %}" class="action-btn" style="display: inline-block; padding: 6px 12px; background: #ff9800; color: white; text-decoration: none; border-radius: 4px; font-size: 0.85rem;">
+                                                    <i class="fa-solid fa-user-slash"></i>
+                                                    No-Show
+                                                </a>
+                                                <form method="post" action="{% url 'doctors' email %}" class="cancel-form" style="display: inline-block;">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="form_type" value="email_user">
+                                                    <input type="hidden" name="date" value="{{ appointment.appdate }}">
+                                                    <input type="hidden" name="time" value="{{ appointment.apptime }}">
+                                                    <input type="hidden" name="useremail" value="{{ appointment.useremail }}">
+                                                    <input type="hidden" name="doctorname" value="{{ appointment.doctorname }}">
+                                                    <button type="submit" class="cancel-btn" style="padding: 6px 12px; font-size: 0.85rem;">
+                                                        <i class="fa-solid fa-times"></i>
+                                                        Cancel
+                                                    </button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                     {% endfor %}

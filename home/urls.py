@@ -35,4 +35,39 @@ urlpatterns = [
     path("mark-notification-read/<int:notification_id>/", views.mark_notification_read, name="mark_notification_read"),
     path("patient-dashboard/<user_email>/", views.patient_dashboard, name="patient_dashboard"),
     path("doctor-dashboard/<doctor_email>/", views.doctor_dashboard, name="doctor_dashboard"),
+    
+    # Phase 3: Advanced Appointment Management URLs
+    path("create-recurring-appointment/<doctor_email>/", views.create_recurring_appointment, name="create_recurring_appointment"),
+    path("reschedule-appointment/<int:appointment_id>/", views.reschedule_appointment, name="reschedule_appointment"),
+    path("join-waitlist/<doctor_email>/", views.join_waitlist, name="join_waitlist"),
+    path("create-treatment-plan/<patient_email>/", views.create_treatment_plan, name="create_treatment_plan"),
+    path("view-treatment-plans/<user_email>/", views.view_treatment_plans, name="view_treatment_plans"),
+    path("treatment-plan-details/<int:plan_id>/", views.treatment_plan_details, name="treatment_plan_details"),
+    path("mark-no-show/<int:appointment_id>/", views.mark_no_show, name="mark_no_show"),
+    
+    # Phase 4: Two-Factor Authentication URLs
+    path("enable-2fa/", views.enable_2fa_view, name="enable_2fa_view"),
+    path("disable-2fa/", views.disable_2fa_view, name="disable_2fa_view"),
+    path("request-2fa-otp/", views.request_2fa_otp, name="request_2fa_otp"),
+    path("verify-2fa/", views.verify_2fa_view, name="verify_2fa_view"),
+    
+    # Phase 4: Advanced Search URL
+    path("advanced-search/", views.advanced_search, name="advanced_search"),
+    
+    # Phase 5: Reports & Analytics URLs
+    path("generate-report/", views.generate_report_view, name="generate_report"),
+    path("view-reports/", views.view_reports, name="view_reports"),
+    path("analytics-dashboard/", views.analytics_dashboard, name="analytics_dashboard"),
+    path("export-data/", views.export_data_view, name="export_data"),
+    path("export-appointments-csv/", views.export_appointments_csv, name="export_appointments_csv"),
+    path("export-payments-csv/", views.export_payments_csv, name="export_payments_csv"),
+    path("export-medical-records-csv/", views.export_medical_records_csv, name="export_medical_records_csv"),
+    
+    # Phase 5: Analytics API Endpoints
+    path("api/revenue-analytics/", views.api_revenue_analytics, name="api_revenue_analytics"),
+    path("api/appointment-trends/", views.api_appointment_trends, name="api_appointment_trends"),
+    path("api/doctor-performance/", views.api_doctor_performance, name="api_doctor_performance"),
+    
+    # PWA Offline Page
+    path("offline/", views.offline_page, name="offline_page"),
 ]

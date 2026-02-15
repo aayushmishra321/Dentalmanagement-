@@ -6,12 +6,17 @@ __pycache__/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-media/
+
+# Media files (user uploads) - Keep structure but ignore content
+media/*
+!media/.gitkeep
+
+# Logs
+logs/*.log
+!logs/.gitkeep
 
 # Environment variables
-# .env - Commented out for Render deployment
-# Uncomment the line below if you want to exclude .env from git
-# .env
+.env
 
 # Static files
 staticfiles/

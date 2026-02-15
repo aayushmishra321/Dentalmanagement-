@@ -3,7 +3,16 @@ Celery Tasks for Dental Management System
 Background tasks for appointment reminders, reports, and notifications
 """
 
-from celery import shared_task
+try:
+    from celery import shared_task
+    CELERY_AVAILABLE = True
+except ImportError:
+    # Celery not available, create a dummy decorator
+    CELERY_AVAILABLE = False
+    def shared_task(func):
+        """Dummy decorator when celery is not available"""
+        return func
+
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
@@ -20,6 +29,10 @@ def send_appointment_reminders():
     Send email reminders for appointments happening in the next 24 hours
     Runs every hour via Celery Beat
     """
+    if not CELERY_AVAILABLE:
+        logger.warning("Celery not available. Task cannot run in background.")
+        return
+    
     try:
         # Get tomorrow's date
         tomorrow = (datetime.today() + timedelta(days=1)).strftime('%Y-%m-%d')

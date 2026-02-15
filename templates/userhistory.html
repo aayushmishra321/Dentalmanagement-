@@ -67,7 +67,7 @@
         <!-- History Content -->
         <section class="history-section">
             <div class="container">
-                {% if noappointment == True %}
+                {% if not no_history %}
                 <div class="history-content">
                     <div class="history-table-container">
                         <div class="table-responsive">
@@ -86,14 +86,19 @@
                                             <i class="fa-solid fa-prescription-bottle-medical"></i>
                                             Prescription
                                         </th>
+                                        <th class="table-actions">
+                                            <i class="fa-solid fa-cog"></i>
+                                            Actions
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for appointment in userdetail %}
+                                    {% for appointment in history_data %}
                                     <tr class="history-row fade-in">
                                         <td class="date-cell">
                                             <div class="date-content">
                                                 <span class="date-text">{{ appointment.appdate }}</span>
+                                                <span class="time-text">{{ appointment.apptime }}</span>
                                             </div>
                                         </td>
                                         <td class="doctor-cell">
@@ -101,7 +106,10 @@
                                                 <div class="doctor-avatar">
                                                     <i class="fa-solid fa-user-doctor"></i>
                                                 </div>
-                                                <span class="doctor-name">{{ appointment.doctorname }}</span>
+                                                <div>
+                                                    <span class="doctor-name">Dr. {{ appointment.doctorname }}</span>
+                                                    <a href="{% url 'doctor_profile' appointment.doctoremail %}" style="display: block; font-size: 0.85rem; color: #667eea; text-decoration: none;">View Profile</a>
+                                                </div>
                                             </div>
                                         </td>
                                         <td class="prescription-cell">
@@ -119,6 +127,12 @@
                                                 {% endif %}
                                             </div>
                                         </td>
+                                        <td class="actions-cell">
+                                            <a href="{% url 'rate_doctor' appointment.doctoremail %}" class="rate-btn" style="display: inline-block; padding: 8px 16px; background: #ffc107; color: #333; text-decoration: none; border-radius: 5px; font-size: 0.9rem;">
+                                                <i class="fa-solid fa-star"></i>
+                                                Rate Doctor
+                                            </a>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -126,7 +140,7 @@
                         </div>
                     </div>
                 </div>
-                {% elif noappointment == False %}
+                {% else %}
                 <div class="no-history">
                     <div class="no-history-icon">
                         <i class="fa-solid fa-calendar-xmark"></i>

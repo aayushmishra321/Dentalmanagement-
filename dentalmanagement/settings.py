@@ -12,10 +12,13 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
-# import dj_database_url  # Not needed for SQLite3 setup
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / '.env')
 
 # Helper function to get environment variables
 def get_env_variable(var_name, default=None):
@@ -54,6 +57,12 @@ INSTALLED_APPS = [
     'django_cleanup.apps.CleanupConfig',
     'star_ratings',
     'import_export',
+    
+    # Phase 4: Enhanced Security & API
+    'rest_framework_simplejwt',
+    'drf_spectacular',
+    'guardian',
+    'axes',
 ]
 
 MIDDLEWARE = [
@@ -66,6 +75,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'axes.middleware.AxesMiddleware',  # Brute force protection
 ]
 
 ROOT_URLCONF = 'dentalmanagement.urls'
@@ -189,6 +199,11 @@ if not DEBUG:
     SESSION_COOKIE_AGE = 86400  # 24 hours
     SESSION_SAVE_EVERY_REQUEST = True
     SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+else:
+    # Development settings - disable HTTPS redirects
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 
 # ============================================================================
@@ -271,6 +286,11 @@ AUTH_PASSWORD_VALIDATORS = [
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'suppress_https_errors': {
+            '()': 'dentalmanagement.logging_filters.SuppressHTTPSErrors',
+        },
+    },
     'formatters': {
         'verbose': {
             'format': '{levelname} {asctime} {module} {message}',
@@ -288,6 +308,7 @@ LOGGING = {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+            'filters': ['suppress_https_errors'],  # Add filter here
         },
     },
     'loggers': {
@@ -295,6 +316,12 @@ LOGGING = {
             'handlers': ['file', 'console'],
             'level': 'INFO',
             'propagate': True,
+        },
+        'django.server': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'filters': ['suppress_https_errors'],  # Add filter here
+            'propagate': False,
         },
         'home': {
             'handlers': ['file', 'console'],
@@ -308,3 +335,181 @@ LOGGING = {
 LOGS_DIR = BASE_DIR / 'logs'
 if not LOGS_DIR.exists():
     LOGS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+
+# ============================================================================
+# PHASE 4: ENHANCED SECURITY & API CONFIGURATION
+# ============================================================================
+
+# Django REST Framework Configuration
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ),
+    'DEFAULT_FILTER_BACKENDS': (
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ),
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour'
+    }
+}
+
+# JWT Configuration
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'email',
+    'USER_ID_CLAIM': 'user_email',
+    
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
+}
+
+# API Documentation (drf-spectacular)
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Dental Management System API',
+    'DESCRIPTION': 'Complete REST API for Dental Management System with advanced features',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
+    'SCHEMA_PATH_PREFIX': '/api/v1/',
+}
+
+# CORS Configuration
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+# Django Guardian (Object-level permissions)
+AUTHENTICATION_BACKENDS = (
+    'axes.backends.AxesStandaloneBackend',  # Axes backend for brute force protection
+    'django.contrib.auth.backends.ModelBackend',  # Default
+    'guardian.backends.ObjectPermissionBackend',
+)
+
+# Django Axes (Brute Force Protection)
+# Temporarily disabled to fix session_hash issue
+AXES_ENABLED = False  # Disable Axes temporarily
+AXES_FAILURE_LIMIT = 5  # Lock after 5 failed attempts
+AXES_COOLOFF_TIME = 1  # Lock for 1 hour
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_TEMPLATE = None  # Use default
+AXES_LOCKOUT_URL = None  # Redirect to login
+AXES_VERBOSE = True
+
+# Session Security
+SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_AGE = 3600  # 1 hour
+SESSION_SAVE_EVERY_REQUEST = True
+
+# CSRF Security
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Security Headers
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = 'DENY'
+
+# Password Validation (Enhanced)
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 8,
+        }
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+]
+
+# Rate Limiting Configuration
+RATELIMIT_ENABLE = True
+RATELIMIT_USE_CACHE = 'default'
+RATELIMIT_VIEW = 'home.views.ratelimit_error'
+
+# Audit Logging Configuration
+AUDIT_LOG_ENABLED = True
+AUDIT_LOG_ANONYMOUS = False  # Don't log anonymous users
+AUDIT_LOG_EXCLUDE_PATHS = ['/static/', '/media/', '/admin/jsi18n/']
+
+# 2FA Configuration
+TWO_FACTOR_ENABLED = True
+TWO_FACTOR_OTP_LENGTH = 6
+TWO_FACTOR_OTP_EXPIRY = 300  # 5 minutes in seconds
+TWO_FACTOR_MAX_ATTEMPTS = 3
+
+# API Rate Limits (per endpoint)
+API_RATE_LIMITS = {
+    'login': '10/hour',
+    'register': '5/hour',
+    'password_reset': '3/hour',
+    'otp_generate': '5/hour',
+    'default': '100/hour',
+}
+
+# ============================================================================
+# STRIPE PAYMENT GATEWAY CONFIGURATION
+# ============================================================================
+
+# Stripe API Keys (from .env file)
+STRIPE_SECRET_KEY = get_env_variable('STRIPE_SECRET_KEY', '')
+STRIPE_PUBLISHABLE_KEY = get_env_variable('STRIPE_PUBLISHABLE_KEY', '')
+STRIPE_WEBHOOK_SECRET = get_env_variable('STRIPE_WEBHOOK_SECRET', '')
+
+# Stripe Configuration
+STRIPE_CURRENCY = 'inr'  # Indian Rupees
+STRIPE_PAYMENT_DESCRIPTION = 'Dental Consultation Payment'

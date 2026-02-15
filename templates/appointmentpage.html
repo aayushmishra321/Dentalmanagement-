@@ -135,7 +135,11 @@
                         </div>
                         
                         <div class="doctor-actions">
-                            <form method="post" action="{% url 'appointment' email %}" class="book-form">
+                            <a href="{% url 'doctor_profile' doctor.email %}" class="profile-btn" style="display: inline-block; padding: 10px 20px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin-right: 10px;">
+                                <i class="fa-solid fa-user"></i>
+                                View Profile
+                            </a>
+                            <form method="post" action="{% url 'appointment' email %}" class="book-form" style="display: inline-block;">
                                 {% csrf_token %}
                                 <input type="hidden" name="form_type" value="email_doctor">
                                 <input type="hidden" name="doctoremail" value="{{ doctor.email }}">

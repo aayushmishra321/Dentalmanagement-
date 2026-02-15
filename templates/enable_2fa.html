@@ -1,0 +1,143 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Two-Factor Authentication</title>
+    <link rel="stylesheet" href="{% static 'cssfiles/responsive-base.css' %}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 28px; margin-bottom: 10px; }
+        .content { padding: 40px; }
+        .status-box {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .status-enabled {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            color: #2e7d32;
+        }
+        .status-disabled {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+        }
+        .status-box h2 { margin-bottom: 10px; font-size: 20px; }
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 25px;
+            border-radius: 8px;
+        }
+        .info-box h3 { color: #667eea; margin-bottom: 10px; }
+        .info-box ul { margin-left: 20px; }
+        .info-box li { margin: 8px 0; color: #555; }
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-bottom: 15px;
+        }
+        .btn-enable {
+            background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+            color: white;
+        }
+        .btn-disable {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+            color: white;
+        }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-back {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #f5f5f5;
+            color: #333;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .btn-back:hover { background: #e0e0e0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Two-Factor Authentication</h1>
+            <p>Add an extra layer of security to your account</p>
+        </div>
+        <div class="content">
+            {% if 2fa_enabled %}
+            <div class="status-box status-enabled">
+                <h2>✓ 2FA is Enabled</h2>
+                <p>Your account is protected with two-factor authentication</p>
+            </div>
+            {% else %}
+            <div class="status-box status-disabled">
+                <h2>⚠️ 2FA is Disabled</h2>
+                <p>Enable 2FA to secure your account</p>
+            </div>
+            {% endif %}
+            
+            <div class="info-box">
+                <h3>What is Two-Factor Authentication?</h3>
+                <p>Two-factor authentication (2FA) adds an extra layer of security to your account. When enabled, you'll need to enter a code sent to your email in addition to your password when logging in.</p>
+            </div>
+            
+            <div class="info-box">
+                <h3>Benefits of 2FA:</h3>
+                <ul>
+                    <li>Protects your account from unauthorized access</li>
+                    <li>Prevents password theft</li>
+                    <li>Secures sensitive medical information</li>
+                    <li>Industry-standard security practice</li>
+                </ul>
+            </div>
+            
+            {% if 2fa_enabled %}
+            <form method="POST" action="{% url 'disable_2fa_view' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-disable">Disable 2FA</button>
+            </form>
+            {% else %}
+            <form method="POST">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-enable">Enable 2FA</button>
+            </form>
+            {% endif %}
+            
+            <a href="{% if user_type == 'patient' %}{% url 'patient_dashboard' email %}{% else %}{% url 'doctor_dashboard' email %}{% endif %}" class="btn-back">← Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

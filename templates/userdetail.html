@@ -58,7 +58,7 @@
                             <i class="fa-solid fa-user"></i>
                         </div>
                         <div class="profile-title">
-                            <h1 class="profile-name">{{ userdetail.name }}</h1>
+                            <h1 class="profile-name">{{ user_data.name }}</h1>
                             <p class="profile-subtitle">Patient Profile</p>
                         </div>
                     </div>
@@ -80,7 +80,7 @@
                                             <i class="fa-solid fa-user"></i>
                                             Full Name
                                         </div>
-                                        <div class="detail-value">{{ userdetail.name }}</div>
+                                        <div class="detail-value">{{ user_data.name }}</div>
                                     </div>
                                 </div>
                                 
@@ -90,14 +90,14 @@
                                             <i class="fa-solid fa-calendar-days"></i>
                                             Date of Birth
                                         </div>
-                                        <div class="detail-value">{{ userdetail.dateofbirth }}</div>
+                                        <div class="detail-value">{{ user_data.dateofbirth }}</div>
                                     </div>
                                     <div class="detail-item">
                                         <div class="detail-label">
                                             <i class="fa-solid fa-venus-mars"></i>
                                             Gender
                                         </div>
-                                        <div class="detail-value">{{ userdetail.gender }}</div>
+                                        <div class="detail-value">{{ user_data.gender }}</div>
                                     </div>
                                 </div>
                                 
@@ -107,14 +107,14 @@
                                             <i class="fa-solid fa-phone"></i>
                                             Contact Number
                                         </div>
-                                        <div class="detail-value">{{ userdetail.contact }}</div>
+                                        <div class="detail-value">{{ user_data.contact }}</div>
                                     </div>
                                     <div class="detail-item">
                                         <div class="detail-label">
                                             <i class="fa-solid fa-envelope"></i>
                                             Email Address
                                         </div>
-                                        <div class="detail-value">{{ userdetail.email }}</div>
+                                        <div class="detail-value">{{ user_data.email }}</div>
                                     </div>
                                 </div>
                                 
@@ -125,8 +125,8 @@
                                             Address
                                         </div>
                                         <div class="detail-value address">
-                                            {{ userdetail.address }}<br>
-                                            PIN: {{ userdetail.pincode }}
+                                            {{ user_data.address }}<br>
+                                            PIN: {{ user_data.pincode }}
                                         </div>
                                     </div>
                                 </div>

@@ -21,7 +21,10 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('',include("home.urls"))
+    path('', include("home.urls")),
+    
+    # Phase 4: REST API endpoints
+    path('api/v1/', include('home.api_urls')),
 ]
 
 # Serve media files in development

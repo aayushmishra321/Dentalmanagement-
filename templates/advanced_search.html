@@ -1,0 +1,184 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Search</title>
+    <link rel="stylesheet" href="{% static 'cssfiles/responsive-base.css' %}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 32px; margin-bottom: 10px; }
+        .content { padding: 40px; }
+        .search-box {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        .search-form {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn-search {
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .search-tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            padding: 10px 20px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .results-section { margin-top: 30px; }
+        .result-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        .result-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+        .result-title { font-size: 20px; color: #333; font-weight: 600; margin-bottom: 10px; }
+        .result-info { color: #666; margin: 5px 0; font-size: 14px; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .empty-state h3 { font-size: 24px; margin-bottom: 10px; }
+        .btn-back {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #f5f5f5;
+            color: #333;
+            text-decoration: none;
+            border-radius: 8px;
+        }
+        @media (max-width: 768px) {
+            .search-form { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Advanced Search</h1>
+            <p>Search across doctors, appointments, and medical records</p>
+        </div>
+        <div class="content">
+            <div class="search-box">
+                <form method="GET" class="search-form">
+                    <input type="text" name="q" class="search-input" placeholder="Search..." value="{{ query }}" required>
+                    <input type="hidden" name="type" value="{{ search_type }}">
+                    <button type="submit" class="btn-search">Search</button>
+                </form>
+                
+                <div class="search-tabs">
+                    <a href="?q={{ query }}&type=doctors" class="tab {% if search_type == 'doctors' %}active{% endif %}">Doctors</a>
+                    <a href="?q={{ query }}&type=appointments" class="tab {% if search_type == 'appointments' %}active{% endif %}">Appointments</a>
+                    <a href="?q={{ query }}&type=medical_records" class="tab {% if search_type == 'medical_records' %}active{% endif %}">Medical Records</a>
+                </div>
+            </div>
+            
+            <div class="results-section">
+                {% if results.doctors %}
+                    <h2 style="margin-bottom: 20px;">Doctors ({{ results.doctors|length }})</h2>
+                    {% for doctor in results.doctors %}
+                    <div class="result-card">
+                        <div class="result-title">Dr. {{ doctor.name }}</div>
+                        <p class="result-info"><strong>Clinic:</strong> {{ doctor.clinicname }}</p>
+                        <p class="result-info"><strong>City:</strong> {{ doctor.city }}</p>
+                        <p class="result-info"><strong>Experience:</strong> {{ doctor.experience }}</p>
+                        <p class="result-info"><strong>Fee:</strong> ₹{{ doctor.consultationfee }}</p>
+                    </div>
+                    {% endfor %}
+                {% elif results.appointments %}
+                    <h2 style="margin-bottom: 20px;">Appointments ({{ results.appointments|length }})</h2>
+                    {% for appointment in results.appointments %}
+                    <div class="result-card">
+                        <div class="result-title">Appointment with Dr. {{ appointment.doctorname }}</div>
+                        <p class="result-info"><strong>Date:</strong> {{ appointment.appdate }}</p>
+                        <p class="result-info"><strong>Time:</strong> {{ appointment.apptime }}</p>
+                        <p class="result-info"><strong>Clinic:</strong> {{ appointment.clinicname }}, {{ appointment.city }}</p>
+                        <p class="result-info"><strong>Fee:</strong> ₹{{ appointment.consultationfee }}</p>
+                    </div>
+                    {% endfor %}
+                {% elif results.medical_records %}
+                    <h2 style="margin-bottom: 20px;">Medical Records ({{ results.medical_records|length }})</h2>
+                    {% for record in results.medical_records %}
+                    <div class="result-card">
+                        <div class="result-title">{{ record.diagnosis }}</div>
+                        <p class="result-info"><strong>Doctor:</strong> Dr. {{ record.doctor.name }}</p>
+                        <p class="result-info"><strong>Date:</strong> {{ record.created_at|date:"M d, Y" }}</p>
+                        <p class="result-info"><strong>Treatment:</strong> {{ record.treatment_provided|truncatewords:20 }}</p>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state">
+                        <h3>No Results Found</h3>
+                        <p>Try different search terms or filters</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <a href="{% url 'patient_dashboard' email %}" class="btn-back">← Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

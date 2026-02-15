@@ -204,7 +204,7 @@
             <h2>Patient Reviews & Ratings</h2>
             <div class="rating-overview">
                 <div class="rating-score">
-                    <h1>{{ avg_rating }}</h1>
+                    <h1>{{ avg_rating_exact|floatformat:1 }}</h1>
                     <div class="stars">
                         {% for i in "12345" %}
                             {% if forloop.counter <= avg_rating %}
@@ -218,18 +218,18 @@
                 </div>
                 
                 <div class="rating-bars">
-                    {% for star in "54321" %}
-                        <div class="rating-bar">
-                            <span>{{ star }} ★</span>
-                            <div class="bar">
-                                {% with count=rating_dist|get_item:star %}
-                                    {% if total_ratings > 0 %}
-                                        <div class="bar-fill" style="width: { count|mul:100|div:total_ratings }%"></div>
-                                    {% endif %}
-                                {% endwith %}
-                            </div>
-                            <span>{{ rating_dist|get_item:star }}</span>
+                    {% for rating_item in rating_dist %}
+                    <div class="rating-bar">
+                        <span>{{ rating_item.stars }} ★</span>
+                        <div class="bar">
+                            {% if total_ratings > 0 %}
+                                <div class="bar-fill" style="width: {% widthratio rating_item.count total_ratings 100 %}%"></div>
+                            {% else %}
+                                <div class="bar-fill" style="width: 0%"></div>
+                            {% endif %}
                         </div>
+                        <span>{{ rating_item.count }}</span>
+                    </div>
                     {% endfor %}
                 </div>
             </div>

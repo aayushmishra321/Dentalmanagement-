@@ -1,0 +1,148 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Treatment Plans</title>
+    <link rel="stylesheet" href="{% static 'cssfiles/responsive-base.css' %}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 32px; margin-bottom: 10px; }
+        .content { padding: 40px; }
+        .plan-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        .plan-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+        .plan-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 15px;
+        }
+        .plan-title { font-size: 20px; color: #333; font-weight: 600; }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-active { background: #e8f5e9; color: #2e7d32; }
+        .status-completed { background: #e3f2fd; color: #1565c0; }
+        .plan-info { margin: 15px 0; }
+        .plan-info p {
+            color: #666;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s;
+        }
+        .btn-view {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: transform 0.2s;
+        }
+        .btn-view:hover { transform: translateY(-2px); }
+        .btn-back {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #f5f5f5;
+            color: #333;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .btn-back:hover { background: #e0e0e0; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .empty-state h3 { font-size: 24px; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>My Treatment Plans</h1>
+            <p>Track your ongoing and completed treatment plans</p>
+        </div>
+        <div class="content">
+            {% if plans %}
+                {% for plan in plans %}
+                <div class="plan-card">
+                    <div class="plan-header">
+                        <div class="plan-title">{{ plan.title }}</div>
+                        <span class="status-badge {% if plan.is_active %}status-active{% else %}status-completed{% endif %}">
+                            {% if plan.is_active %}Active{% else %}Completed{% endif %}
+                        </span>
+                    </div>
+                    <div class="plan-info">
+                        <p><strong>Doctor:</strong> Dr. {{ plan.doctor.name }}</p>
+                        <p><strong>Description:</strong> {{ plan.description|truncatewords:20 }}</p>
+                        <p><strong>Sessions:</strong> {{ plan.completed_sessions }} / {{ plan.total_sessions }} completed</p>
+                        <p><strong>Cost:</strong> ₹{{ plan.total_cost }} (Paid: ₹{{ plan.paid_amount }})</p>
+                        <p><strong>Duration:</strong> {{ plan.start_date }} to {{ plan.estimated_end_date }}</p>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {% widthratio plan.completed_sessions plan.total_sessions 100 %}%"></div>
+                    </div>
+                    <a href="{% url 'treatment_plan_details' plan.id %}" class="btn-view">View Details →</a>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <h3>No Treatment Plans</h3>
+                    <p>You don't have any treatment plans yet.</p>
+                </div>
+            {% endif %}
+            <a href="{% url 'patient_dashboard' email %}" class="btn-back">← Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

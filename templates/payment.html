@@ -6,6 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment - Dental Management</title>
     <link rel="stylesheet" href="{% static 'cssfiles/responsive-base.css' %}">
+    {% if stripe_available %}
+    <script src="https://js.stripe.com/v3/"></script>
+    {% endif %}
     <style>
         .payment-container {
             max-width: 800px;
@@ -229,7 +232,7 @@
                             <input type="radio" name="payment_method" value="card" id="card">
                             <label for="card" class="method-label">
                                 <span class="method-icon">💳</span>
-                                <span class="method-name">Card</span>
+                                <span class="method-name">Card{% if stripe_available %} (Stripe){% endif %}</span>
                             </label>
                         </div>
                         
@@ -245,7 +248,7 @@
                             <input type="radio" name="payment_method" value="online" id="online">
                             <label for="online" class="method-label">
                                 <span class="method-icon">🌐</span>
-                                <span class="method-name">Online</span>
+                                <span class="method-name">Online{% if stripe_available %} (Stripe){% endif %}</span>
                             </label>
                         </div>
                     </div>
@@ -263,11 +266,36 @@
     <script>
         const paymentMethods = document.querySelectorAll('input[name="payment_method"]');
         const submitBtn = document.getElementById('submitBtn');
+        const paymentForm = document.getElementById('paymentForm');
+        
+        {% if stripe_available and stripe_publishable_key %}
+        // Initialize Stripe
+        const stripe = Stripe('{{ stripe_publishable_key }}');
+        {% endif %}
         
         paymentMethods.forEach(method => {
             method.addEventListener('change', function() {
                 submitBtn.disabled = false;
             });
+        });
+        
+        // Handle form submission
+        paymentForm.addEventListener('submit', function(e) {
+            const selectedMethod = document.querySelector('input[name="payment_method"]:checked');
+            
+            if (!selectedMethod) {
+                e.preventDefault();
+                alert('Please select a payment method');
+                return;
+            }
+            
+            // For Stripe payments (card/online), show processing message
+            {% if stripe_available %}
+            if (selectedMethod.value === 'card' || selectedMethod.value === 'online') {
+                submitBtn.textContent = 'Processing Payment...';
+                submitBtn.disabled = true;
+            }
+            {% endif %}
         });
     </script>
 </body>

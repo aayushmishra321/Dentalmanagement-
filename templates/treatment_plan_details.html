@@ -1,0 +1,158 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treatment Plan Details</title>
+    <link rel="stylesheet" href="{% static 'cssfiles/responsive-base.css' %}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        .header h1 { font-size: 28px; margin-bottom: 10px; }
+        .content { padding: 40px; }
+        .plan-overview {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        .plan-overview h2 { color: #333; margin-bottom: 15px; }
+        .plan-overview p { color: #666; margin: 8px 0; }
+        .progress-section {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .sessions-section h2 { color: #333; margin-bottom: 20px; }
+        .session-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .session-info h3 { color: #333; font-size: 16px; margin-bottom: 8px; }
+        .session-info p { color: #666; font-size: 14px; margin: 4px 0; }
+        .session-status {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .status-completed { background: #e8f5e9; color: #2e7d32; }
+        .status-scheduled { background: #fff3cd; color: #856404; }
+        .status-pending { background: #e3f2fd; color: #1565c0; }
+        .status-cancelled { background: #ffebee; color: #c62828; }
+        .btn-back {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #f5f5f5;
+            color: #333;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        .btn-back:hover { background: #e0e0e0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{{ plan.title }}</h1>
+            <p>Treatment Plan Details</p>
+        </div>
+        <div class="content">
+            <div class="plan-overview">
+                <h2>Overview</h2>
+                <p><strong>Doctor:</strong> Dr. {{ plan.doctor.name }}</p>
+                <p><strong>Description:</strong> {{ plan.description }}</p>
+                <p><strong>Start Date:</strong> {{ plan.start_date }}</p>
+                <p><strong>Estimated End Date:</strong> {{ plan.estimated_end_date }}</p>
+                <p><strong>Total Cost:</strong> ₹{{ plan.total_cost }}</p>
+                <p><strong>Amount Paid:</strong> ₹{{ plan.paid_amount }}</p>
+                <p><strong>Balance:</strong> ₹{{ plan.total_cost|add:"-"|add:plan.paid_amount }}</p>
+            </div>
+            
+            <div class="progress-section">
+                <h3>Overall Progress</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ progress_percentage }}%">
+                        {{ progress_percentage|floatformat:0 }}%
+                    </div>
+                </div>
+                <p style="text-align: center; color: #666; margin-top: 10px;">
+                    {{ plan.completed_sessions }} of {{ plan.total_sessions }} sessions completed
+                </p>
+            </div>
+            
+            <div class="sessions-section">
+                <h2>Treatment Sessions</h2>
+                {% for session in sessions %}
+                <div class="session-card">
+                    <div class="session-info">
+                        <h3>Session {{ session.session_number }}</h3>
+                        {% if session.scheduled_date %}
+                        <p><strong>Scheduled:</strong> {{ session.scheduled_date }} at {{ session.scheduled_time }}</p>
+                        {% endif %}
+                        {% if session.notes %}
+                        <p><strong>Notes:</strong> {{ session.notes|truncatewords:15 }}</p>
+                        {% endif %}
+                        {% if session.completed_at %}
+                        <p><strong>Completed:</strong> {{ session.completed_at|date:"M d, Y" }}</p>
+                        {% endif %}
+                    </div>
+                    <span class="session-status status-{{ session.status }}">
+                        {{ session.get_status_display }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <a href="{% url 'view_treatment_plans' email %}" class="btn-back">← Back to Treatment Plans</a>
+        </div>
+    </div>
+</body>
+</html>

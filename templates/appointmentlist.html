@@ -143,14 +143,22 @@
                             </div>
                             
                             <div class="appointment-actions">
-                                <form method="post" action="{% url 'applist' email %}" class="cancel-form">
+                                <a href="{% url 'reschedule_appointment' appointment.id %}" class="reschedule-btn" style="display: inline-block; padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; margin-right: 10px;">
+                                    <i class="fa-solid fa-calendar-alt"></i>
+                                    Reschedule
+                                </a>
+                                <a href="{% url 'process_payment' appointment.id %}" class="pay-btn" style="display: inline-block; padding: 10px 20px; background: #2196F3; color: white; text-decoration: none; border-radius: 5px; margin-right: 10px;">
+                                    <i class="fa-solid fa-credit-card"></i>
+                                    Pay Now
+                                </a>
+                                <form method="post" action="{% url 'applist' email %}" class="cancel-form" style="display: inline-block;">
                                     {% csrf_token %}
                                     <input type="hidden" name="date" value="{{ appointment.appdate }}">
                                     <input type="hidden" name="time" value="{{ appointment.apptime }}">
                                     <input type="hidden" name="doctorname" value="{{ appointment.doctorname }}">
                                     <button type="submit" class="cancel-btn">
                                         <i class="fa-solid fa-times"></i>
-                                        Cancel Appointment
+                                        Cancel
                                     </button>
                                 </form>
                             </div>
