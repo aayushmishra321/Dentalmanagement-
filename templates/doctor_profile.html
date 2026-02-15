@@ -224,7 +224,7 @@
                             <div class="bar">
                                 {% with count=rating_dist|get_item:star %}
                                     {% if total_ratings > 0 %}
-                                        <div class="bar-fill" style="width: {{ count|mul:100|div:total_ratings }}%"></div>
+                                        <div class="bar-fill" style="width: { count|mul:100|div:total_ratings }%"></div>
                                     {% endif %}
                                 {% endwith %}
                             </div>

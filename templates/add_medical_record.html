@@ -1,0 +1,266 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Medical Record</title>
+    <link rel="stylesheet" href="{% static 'cssfiles/responsive-base.css' %}">
+    <style>
+        .form-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        
+        .form-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .form-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        
+        .patient-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .form-body {
+            padding: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .required {
+            color: #f44336;
+        }
+        
+        input[type="text"],
+        input[type="date"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+        
+        .file-upload {
+            border: 2px dashed #e0e0e0;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .file-upload:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+        
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <a href="{% url 'doctors' email %}" class="back-link">← Back to Schedule</a>
+        
+        <div class="form-card">
+            <div class="form-header">
+                <h1>📋 Add Medical Record</h1>
+                <p>Document patient treatment and diagnosis</p>
+            </div>
+            
+            <div class="patient-info">
+                <h3>Patient Information</h3>
+                <p><strong>Name:</strong> {{ patient.name }}</p>
+                <p><strong>Email:</strong> {{ patient.email }}</p>
+                <p><strong>Contact:</strong> {{ patient.contact }}</p>
+            </div>
+            
+            <form method="POST" enctype="multipart/form-data" class="form-body">
+                {% csrf_token %}
+                
+                {% if messages %}
+                    {% for message in messages %}
+                        <div style="padding: 15px; margin-bottom: 20px; border-radius: 8px; background: #fff3cd; color: #856404;">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+                
+                <div class="form-group">
+                    <label for="diagnosis">Diagnosis <span class="required">*</span></label>
+                    <textarea name="diagnosis" id="diagnosis" required placeholder="Enter diagnosis details..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="treatment">Treatment Provided <span class="required">*</span></label>
+                    <textarea name="treatment" id="treatment" required placeholder="Describe the treatment provided..."></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="procedure_type">Procedure Type</label>
+                        <select name="procedure_type" id="procedure_type">
+                            <option value="">Select procedure</option>
+                            <option value="Cleaning">Cleaning</option>
+                            <option value="Filling">Filling</option>
+                            <option value="Root Canal">Root Canal</option>
+                            <option value="Extraction">Extraction</option>
+                            <option value="Crown">Crown</option>
+                            <option value="Implant">Implant</option>
+                            <option value="Whitening">Whitening</option>
+                            <option value="Braces">Braces</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="teeth_treated">Teeth Treated</label>
+                        <input type="text" name="teeth_treated" id="teeth_treated" placeholder="e.g., Upper left molar">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="medications">Medications Prescribed</label>
+                    <textarea name="medications" id="medications" placeholder="List medications, dosage, and duration..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="notes">Additional Notes</label>
+                    <textarea name="notes" id="notes" placeholder="Any additional observations or instructions..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="follow_up" id="follow_up">
+                        <label for="follow_up" style="margin: 0;">Follow-up Required</label>
+                    </div>
+                </div>
+                
+                <div class="form-group" id="followUpDate" style="display: none;">
+                    <label for="follow_up_date">Follow-up Date</label>
+                    <input type="date" name="follow_up_date" id="follow_up_date">
+                </div>
+                
+                <div class="form-group">
+                    <label>Medical Images (X-rays, Scans, Photos)</label>
+                    <div class="file-upload" onclick="document.getElementById('medical_images').click()">
+                        <div class="upload-icon">📸</div>
+                        <p>Click to upload images</p>
+                        <p style="font-size: 0.9rem; color: #999;">Supports: JPG, PNG (Max 10MB each)</p>
+                        <input type="file" name="medical_images" id="medical_images" multiple accept="image/*">
+                    </div>
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label for="image_type">Image Type</label>
+                        <select name="image_type" id="image_type">
+                            <option value="photo">Clinical Photo</option>
+                            <option value="xray">X-Ray</option>
+                            <option value="scan">CT Scan</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-btn">
+                    💾 Save Medical Record
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('follow_up').addEventListener('change', function() {
+            document.getElementById('followUpDate').style.display = this.checked ? 'block' : 'none';
+        });
+        
+        document.getElementById('medical_images').addEventListener('change', function() {
+            const fileCount = this.files.length;
+            if (fileCount > 0) {
+                document.querySelector('.file-upload p').textContent = `${fileCount} file(s) selected`;
+            }
+        });
+    </script>
+</body>
+</html>

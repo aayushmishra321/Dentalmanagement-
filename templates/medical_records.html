@@ -1,0 +1,311 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Records</title>
+    <link rel="stylesheet" href="{% static 'cssfiles/responsive-base.css' %}">
+    <style>
+        .records-container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .allergies-section {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .allergy-item {
+            display: inline-block;
+            background: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            margin: 5px;
+            font-weight: 600;
+        }
+        
+        .severity-mild { border-left: 3px solid #4caf50; }
+        .severity-moderate { border-left: 3px solid #ff9800; }
+        .severity-severe { border-left: 3px solid #f44336; }
+        
+        .records-list {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .record-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        
+        .record-card:hover {
+            box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+        }
+        
+        .record-header {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .record-date {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .doctor-badge {
+            background: #667eea;
+            color: white;
+            padding: 6px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .record-body {
+            padding: 25px;
+        }
+        
+        .record-section {
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .section-content {
+            color: #666;
+            line-height: 1.6;
+            padding-left: 30px;
+        }
+        
+        .procedure-badge {
+            display: inline-block;
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            margin-right: 10px;
+        }
+        
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .medical-image {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            aspect-ratio: 1;
+        }
+        
+        .medical-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .image-type {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+        
+        .follow-up-alert {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: white;
+            border-radius: 15px;
+        }
+        
+        .empty-icon {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .record-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="records-container">
+        <div class="page-header">
+            <h1>📋 Medical Records</h1>
+            <p>Your complete dental health history</p>
+        </div>
+        
+        {% if allergies %}
+            <div class="allergies-section">
+                <h3>⚠️ Allergies & Medical Conditions</h3>
+                {% for allergy in allergies %}
+                    <span class="allergy-item severity-{{ allergy.severity }}">
+                        {{ allergy.allergy_name }} ({{ allergy.severity|upper }})
+                    </span>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% if records %}
+            <div class="records-list">
+                {% for record in records %}
+                    <div class="record-card">
+                        <div class="record-header">
+                            <div class="record-date">
+                                📅 {{ record.created_at|date:"F d, Y" }}
+                            </div>
+                            <div class="doctor-badge">
+                                Dr. {{ record.doctor.name }}
+                            </div>
+                        </div>
+                        
+                        <div class="record-body">
+                            <div class="record-section">
+                                <div class="section-title">
+                                    🔍 Diagnosis
+                                </div>
+                                <div class="section-content">
+                                    {{ record.diagnosis }}
+                                </div>
+                            </div>
+                            
+                            <div class="record-section">
+                                <div class="section-title">
+                                    💊 Treatment Provided
+                                </div>
+                                <div class="section-content">
+                                    {{ record.treatment_provided }}
+                                </div>
+                            </div>
+                            
+                            {% if record.medications %}
+                                <div class="record-section">
+                                    <div class="section-title">
+                                        💉 Medications
+                                    </div>
+                                    <div class="section-content">
+                                        {{ record.medications }}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            {% if record.procedure_type %}
+                                <div class="record-section">
+                                    <div class="section-title">
+                                        🦷 Procedure Details
+                                    </div>
+                                    <div class="section-content">
+                                        <span class="procedure-badge">{{ record.procedure_type }}</span>
+                                        {% if record.teeth_treated %}
+                                            <span>Teeth: {{ record.teeth_treated }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            {% if record.notes %}
+                                <div class="record-section">
+                                    <div class="section-title">
+                                        📝 Doctor's Notes
+                                    </div>
+                                    <div class="section-content">
+                                        {{ record.notes }}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            {% if record.images.all %}
+                                <div class="record-section">
+                                    <div class="section-title">
+                                        📸 Medical Images
+                                    </div>
+                                    <div class="images-grid">
+                                        {% for image in record.images.all %}
+                                            <div class="medical-image">
+                                                <img src="{{ image.image.url }}" alt="{{ image.image_type }}">
+                                                <div class="image-type">{{ image.get_image_type_display }}</div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
+                            
+                            {% if record.follow_up_required %}
+                                <div class="follow-up-alert">
+                                    <strong>⏰ Follow-up Required</strong><br>
+                                    {% if record.follow_up_date %}
+                                        Scheduled for: {{ record.follow_up_date|date:"F d, Y" }}
+                                    {% else %}
+                                        Please schedule a follow-up appointment
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h2>No Medical Records</h2>
+                <p>Your medical records will appear here after your appointments.</p>
+            </div>
+        {% endif %}
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <a href="{% url 'userhp' email %}" style="padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 8px; display: inline-block;">
+                ← Back to Dashboard
+            </a>
+        </div>
+    </div>
+</body>
+</html>
