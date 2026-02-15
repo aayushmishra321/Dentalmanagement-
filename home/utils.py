@@ -3,7 +3,7 @@ Utility functions for Dental Management System
 Helper functions for PDF generation, notifications, etc.
 """
 
-from io.BytesIO
+from io import BytesIO
 from reportlab.lib.pagesizes import letter, A4
 from reportlab.lib import colors
 from reportlab.lib.units import inch

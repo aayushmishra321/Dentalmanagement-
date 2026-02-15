@@ -1,0 +1,235 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rate Dr. {{ doctor.name }}</title>
+    <link rel="stylesheet" href="{% static 'cssfiles/responsive-base.css' %}">
+    <style>
+        .rating-container {
+            max-width: 600px;
+            margin: 60px auto;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .doctor-info {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .doctor-info h2 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .doctor-info p {
+            color: #666;
+        }
+        
+        .rating-form {
+            margin-top: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .star-rating {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            font-size: 3rem;
+            margin: 20px 0;
+        }
+        
+        .star {
+            cursor: pointer;
+            color: #ddd;
+            transition: all 0.2s;
+        }
+        
+        .star:hover,
+        .star.active {
+            color: #ffc107;
+            transform: scale(1.2);
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="rating-container">
+        <a href="{% url 'doctor_profile' doctor.email %}" class="back-link">← Back to Profile</a>
+        
+        <div class="doctor-info">
+            <h2>Rate Dr. {{ doctor.name }}</h2>
+            <p>{{ doctor.clinicname }}, {{ doctor.city }}</p>
+        </div>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        {% if not has_appointment %}
+            <div class="alert alert-warning">
+                <strong>Note:</strong> Your review will be marked as unverified since you haven't had an appointment with this doctor yet.
+            </div>
+        {% endif %}
+        
+        {% if existing_rating %}
+            <div class="alert alert-info">
+                You have already rated this doctor. Submitting again will update your previous rating.
+            </div>
+        {% endif %}
+        
+        <form method="POST" class="rating-form">
+            {% csrf_token %}
+            
+            <div class="form-group">
+                <label>Your Rating *</label>
+                <div class="star-rating" id="starRating">
+                    <span class="star" data-rating="1">★</span>
+                    <span class="star" data-rating="2">★</span>
+                    <span class="star" data-rating="3">★</span>
+                    <span class="star" data-rating="4">★</span>
+                    <span class="star" data-rating="5">★</span>
+                </div>
+                <input type="hidden" name="rating" id="ratingValue" value="{% if existing_rating %}{{ existing_rating.rating }}{% endif %}" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="review">Your Review (Optional)</label>
+                <textarea name="review" id="review" placeholder="Share your experience with Dr. {{ doctor.name }}...">{% if existing_rating %}{{ existing_rating.review }}{% endif %}</textarea>
+            </div>
+            
+            <button type="submit" class="submit-btn" id="submitBtn" {% if not existing_rating %}disabled{% endif %}>
+                {% if existing_rating %}Update Review{% else %}Submit Review{% endif %}
+            </button>
+        </form>
+    </div>
+    
+    <script>
+        const stars = document.querySelectorAll('.star');
+        const ratingValue = document.getElementById('ratingValue');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        // Set initial rating if exists
+        const initialRating = ratingValue.value;
+        if (initialRating) {
+            updateStars(parseInt(initialRating));
+        }
+        
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                const rating = this.getAttribute('data-rating');
+                ratingValue.value = rating;
+                updateStars(rating);
+                submitBtn.disabled = false;
+            });
+            
+            star.addEventListener('mouseenter', function() {
+                const rating = this.getAttribute('data-rating');
+                updateStars(rating);
+            });
+        });
+        
+        document.getElementById('starRating').addEventListener('mouseleave', function() {
+            const currentRating = ratingValue.value || 0;
+            updateStars(currentRating);
+        });
+        
+        function updateStars(rating) {
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

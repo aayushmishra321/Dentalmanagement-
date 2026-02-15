@@ -11,7 +11,11 @@ from datetime import datetime
 from django.core.paginator import Paginator
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db import models
 import random
+import logging
+
+logger = logging.getLogger(__name__)
 # --------------------------------Create your views here.-------------------------------------------------------------
 # ----------------------------main homepage------------------------------
 def homepage(request):
@@ -754,3 +758,524 @@ def userdetail(request, uemailid):
     except UserDetail.DoesNotExist:
         messages.error(request, "User not found")
         return redirect('home')
+
+
+
+# ============================================================================
+# PHASE 2: ADVANCED FEATURES VIEWS
+# ============================================================================
+
+from home.models import (
+    DoctorRating, MedicalRecord, MedicalImage, PatientAllergy,
+    Payment, AppointmentFeedback, Notification
+)
+from home.utils import (
+    generate_invoice_pdf, send_invoice_email, calculate_doctor_average_rating,
+    create_notification, get_unread_notifications_count
+)
+from django.http import HttpResponse, JsonResponse
+from django.db.models import Count, Avg, Q
+from datetime import datetime, timedelta
+import json
+
+
+# -------------------------------------------Doctor Rating & Review-------------------------------------------
+def rate_doctor(request, doctor_email):
+    """Submit rating and review for a doctor"""
+    if not request.session.get('user_logged_in'):
+        return redirect('login')
+    
+    user_email = request.session.get('user_email')
+    
+    try:
+        doctor = DoctorDetail.objects.get(email=doctor_email)
+        user = UserDetail.objects.get(email=user_email)
+        
+        # Check if user has had an appointment with this doctor
+        has_appointment = appointmenthistory.objects.filter(
+            useremail=user_email,
+            doctoremail=doctor_email
+        ).exists()
+        
+        if request.method == 'POST':
+            rating_value = request.POST.get('rating')
+            review_text = request.POST.get('review', '')
+            
+            if not rating_value:
+                messages.warning(request, "Please select a rating")
+                return redirect('rate_doctor', doctor_email)
+            
+            # Create or update rating
+            rating, created = DoctorRating.objects.update_or_create(
+                doctor=doctor,
+                patient=user,
+                defaults={
+                    'rating': int(rating_value),
+                    'review': review_text,
+                    'is_verified': has_appointment
+                }
+            )
+            
+            # Create notification for doctor
+            create_notification(
+                doctor=doctor,
+                title="New Rating Received",
+                message=f"{user.name} rated you {rating_value} stars",
+                notification_type="system"
+            )
+            
+            messages.success(request, "Thank you for your feedback!")
+            return redirect('doctor_profile', doctor_email)
+        
+        # Get existing rating if any
+        existing_rating = DoctorRating.objects.filter(
+            doctor=doctor,
+            patient=user
+        ).first()
+        
+        context = {
+            'doctor': doctor,
+            'email': user_email,
+            'has_appointment': has_appointment,
+            'existing_rating': existing_rating
+        }
+        
+        return render(request, "rate_doctor.html", context)
+        
+    except DoctorDetail.DoesNotExist:
+        messages.error(request, "Doctor not found")
+        return redirect('appointment', user_email)
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        return redirect('appointment', user_email)
+
+
+# -------------------------------------------Doctor Profile with Ratings-------------------------------------------
+def doctor_profile(request, doctor_email):
+    """View doctor profile with ratings and reviews"""
+    try:
+        doctor = DoctorDetail.objects.get(email=doctor_email)
+        
+        # Get all verified ratings
+        ratings = DoctorRating.objects.filter(
+            doctor=doctor,
+            is_verified=True
+        ).order_by('-created_at')
+        
+        # Calculate statistics
+        avg_rating = calculate_doctor_average_rating(doctor)
+        total_ratings = ratings.count()
+        
+        # Rating distribution
+        rating_dist = {
+            5: ratings.filter(rating=5).count(),
+            4: ratings.filter(rating=4).count(),
+            3: ratings.filter(rating=3).count(),
+            2: ratings.filter(rating=2).count(),
+            1: ratings.filter(rating=1).count(),
+        }
+        
+        context = {
+            'doctor': doctor,
+            'ratings': ratings[:10],  # Show latest 10
+            'avg_rating': avg_rating,
+            'total_ratings': total_ratings,
+            'rating_dist': rating_dist,
+            'email': request.session.get('user_email', ''),
+            'check': request.session.get('user_logged_in', False)
+        }
+        
+        return render(request, "doctor_profile.html", context)
+        
+    except DoctorDetail.DoesNotExist:
+        messages.error(request, "Doctor not found")
+        return redirect('home')
+
+
+# -------------------------------------------Payment Processing-------------------------------------------
+def process_payment(request, appointment_id):
+    """Process payment for an appointment"""
+    if not request.session.get('user_logged_in'):
+        return redirect('login')
+    
+    user_email = request.session.get('user_email')
+    
+    try:
+        appointment = bookappointment.objects.get(id=appointment_id, useremail=user_email)
+        doctor = DoctorDetail.objects.get(email=appointment.doctoremail)
+        user = UserDetail.objects.get(email=user_email)
+        
+        if request.method == 'POST':
+            payment_method = request.POST.get('payment_method')
+            
+            if not payment_method:
+                messages.warning(request, "Please select a payment method")
+                return redirect('process_payment', appointment_id)
+            
+            # Create payment record
+            payment = Payment.objects.create(
+                appointment=appointment,
+                patient=user,
+                doctor=doctor,
+                amount=float(appointment.consultationfee.replace('₹', '').replace('+', '').strip()),
+                payment_method=payment_method,
+                payment_status='completed'
+            )
+            
+            # Generate and send invoice
+            try:
+                send_invoice_email(payment)
+            except Exception as e:
+                logger.error(f"Failed to send invoice: {str(e)}")
+            
+            # Create notification
+            create_notification(
+                user=user,
+                title="Payment Successful",
+                message=f"Payment of ₹{payment.amount} completed successfully",
+                notification_type="payment"
+            )
+            
+            messages.success(request, "Payment successful! Invoice sent to your email.")
+            return redirect('payment_success', payment.id)
+        
+        context = {
+            'appointment': appointment,
+            'doctor': doctor,
+            'email': user_email
+        }
+        
+        return render(request, "payment.html", context)
+        
+    except bookappointment.DoesNotExist:
+        messages.error(request, "Appointment not found")
+        return redirect('applist', user_email)
+    except Exception as e:
+        messages.error(request, f"Error: {str(e)}")
+        return redirect('applist', user_email)
+
+
+# -------------------------------------------Payment Success-------------------------------------------
+def payment_success(request, payment_id):
+    """Payment success page with invoice download"""
+    if not request.session.get('user_logged_in'):
+        return redirect('login')
+    
+    user_email = request.session.get('user_email')
+    
+    try:
+        payment = Payment.objects.get(id=payment_id, patient__email=user_email)
+        
+        context = {
+            'payment': payment,
+            'email': user_email
+        }
+        
+        return render(request, "payment_success.html", context)
+        
+    except Payment.DoesNotExist:
+        messages.error(request, "Payment not found")
+        return redirect('userhp', user_email)
+
+
+# -------------------------------------------Download Invoice-------------------------------------------
+def download_invoice(request, payment_id):
+    """Download PDF invoice"""
+    if not request.session.get('user_logged_in'):
+        return redirect('login')
+    
+    user_email = request.session.get('user_email')
+    
+    try:
+        payment = Payment.objects.get(id=payment_id, patient__email=user_email)
+        
+        # Generate PDF
+        pdf_buffer = generate_invoice_pdf(payment)
+        
+        # Create response
+        response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="invoice_{payment.invoice_number}.pdf"'
+        
+        return response
+        
+    except Payment.DoesNotExist:
+        messages.error(request, "Payment not found")
+        return redirect('userhp', user_email)
+    except Exception as e:
+        messages.error(request, f"Error generating invoice: {str(e)}")
+        return redirect('userhp', user_email)
+
+
+# -------------------------------------------Payment History-------------------------------------------
+def payment_history(request, user_email):
+    """View all payment history"""
+    if not request.session.get('user_logged_in'):
+        return redirect('login')
+    
+    try:
+        user = UserDetail.objects.get(email=user_email)
+        payments = Payment.objects.filter(patient=user).order_by('-payment_date')
+        
+        context = {
+            'payments': payments,
+            'email': user_email
+        }
+        
+        return render(request, "payment_history.html", context)
+        
+    except UserDetail.DoesNotExist:
+        messages.error(request, "User not found")
+        return redirect('home')
+
+
+# -------------------------------------------Medical Records-------------------------------------------
+def medical_records(request, user_email):
+    """View patient medical records"""
+    if not request.session.get('user_logged_in'):
+        return redirect('login')
+    
+    try:
+        user = UserDetail.objects.get(email=user_email)
+        records = MedicalRecord.objects.filter(patient=user).order_by('-created_at')
+        allergies = PatientAllergy.objects.filter(patient=user)
+        
+        context = {
+            'records': records,
+            'allergies': allergies,
+            'email': user_email
+        }
+        
+        return render(request, "medical_records.html", context)
+        
+    except UserDetail.DoesNotExist:
+        messages.error(request, "User not found")
+        return redirect('home')
+
+
+# -------------------------------------------Add Medical Record (Doctor)-------------------------------------------
+def add_medical_record(request, patient_email):
+    """Doctor adds medical record for patient"""
+    if not request.session.get('doctor_logged_in'):
+        return redirect('fordoctor')
+    
+    doctor_email = request.session.get('doctor_email')
+    
+    try:
+        patient = UserDetail.objects.get(email=patient_email)
+        doctor = DoctorDetail.objects.get(email=doctor_email)
+        
+        if request.method == 'POST':
+            diagnosis = request.POST.get('diagnosis')
+            treatment = request.POST.get('treatment')
+            medications = request.POST.get('medications', '')
+            notes = request.POST.get('notes', '')
+            teeth_treated = request.POST.get('teeth_treated', '')
+            procedure_type = request.POST.get('procedure_type', '')
+            follow_up = request.POST.get('follow_up') == 'on'
+            follow_up_date = request.POST.get('follow_up_date', None)
+            
+            if not diagnosis or not treatment:
+                messages.warning(request, "Diagnosis and treatment are required")
+                return redirect('add_medical_record', patient_email)
+            
+            # Create medical record
+            record = MedicalRecord.objects.create(
+                patient=patient,
+                doctor=doctor,
+                diagnosis=diagnosis,
+                treatment_provided=treatment,
+                medications=medications,
+                notes=notes,
+                teeth_treated=teeth_treated,
+                procedure_type=procedure_type,
+                follow_up_required=follow_up,
+                follow_up_date=follow_up_date if follow_up_date else None
+            )
+            
+            # Handle image uploads
+            images = request.FILES.getlist('medical_images')
+            for image in images:
+                MedicalImage.objects.create(
+                    medical_record=record,
+                    image=image,
+                    image_type=request.POST.get('image_type', 'photo')
+                )
+            
+            # Create notification
+            create_notification(
+                user=patient,
+                title="New Medical Record",
+                message=f"Dr. {doctor.name} added a new medical record",
+                notification_type="system"
+            )
+            
+            messages.success(request, "Medical record added successfully")
+            return redirect('doctors', doctor_email)
+        
+        context = {
+            'patient': patient,
+            'email': doctor_email
+        }
+        
+        return render(request, "add_medical_record.html", context)
+        
+    except (UserDetail.DoesNotExist, DoctorDetail.DoesNotExist):
+        messages.error(request, "User not found")
+        return redirect('doctors', doctor_email)
+
+
+# -------------------------------------------Notifications-------------------------------------------
+def notifications(request):
+    """View all notifications"""
+    if request.session.get('user_logged_in'):
+        user_email = request.session.get('user_email')
+        user = UserDetail.objects.get(email=user_email)
+        notifs = Notification.objects.filter(user=user).order_by('-created_at')
+        recipient_type = 'user'
+    elif request.session.get('doctor_logged_in'):
+        doctor_email = request.session.get('doctor_email')
+        doctor = DoctorDetail.objects.get(email=doctor_email)
+        notifs = Notification.objects.filter(doctor=doctor).order_by('-created_at')
+        recipient_type = 'doctor'
+    else:
+        return redirect('login')
+    
+    context = {
+        'notifications': notifs,
+        'email': user_email if recipient_type == 'user' else doctor_email,
+        'recipient_type': recipient_type
+    }
+    
+    return render(request, "notifications.html", context)
+
+
+# -------------------------------------------Mark Notification as Read-------------------------------------------
+def mark_notification_read(request, notification_id):
+    """Mark notification as read"""
+    try:
+        notification = Notification.objects.get(id=notification_id)
+        notification.is_read = True
+        notification.save()
+        return JsonResponse({'status': 'success'})
+    except:
+        return JsonResponse({'status': 'error'})
+
+
+# -------------------------------------------Patient Dashboard-------------------------------------------
+def patient_dashboard(request, user_email):
+    """Patient dashboard with statistics"""
+    if not request.session.get('user_logged_in'):
+        return redirect('login')
+    
+    try:
+        user = UserDetail.objects.get(email=user_email)
+        
+        # Get statistics
+        total_appointments = appointmenthistory.objects.filter(useremail=user_email).count()
+        upcoming_appointments = bookappointment.objects.filter(useremail=user_email).count()
+        total_payments = Payment.objects.filter(patient=user).count()
+        total_spent = Payment.objects.filter(patient=user, payment_status='completed').aggregate(
+            total=models.Sum('amount')
+        )['total'] or 0
+        
+        # Recent appointments
+        recent_appointments = appointmenthistory.objects.filter(
+            useremail=user_email
+        ).order_by('-appdate')[:5]
+        
+        # Upcoming appointments
+        upcoming = bookappointment.objects.filter(
+            useremail=user_email
+        ).order_by('appdate')[:5]
+        
+        # Recent payments
+        recent_payments = Payment.objects.filter(
+            patient=user
+        ).order_by('-payment_date')[:5]
+        
+        # Unread notifications
+        unread_count = get_unread_notifications_count(user=user)
+        
+        context = {
+            'user': user,
+            'email': user_email,
+            'total_appointments': total_appointments,
+            'upcoming_appointments': upcoming_appointments,
+            'total_payments': total_payments,
+            'total_spent': total_spent,
+            'recent_appointments': recent_appointments,
+            'upcoming': upcoming,
+            'recent_payments': recent_payments,
+            'unread_notifications': unread_count
+        }
+        
+        return render(request, "patient_dashboard.html", context)
+        
+    except UserDetail.DoesNotExist:
+        messages.error(request, "User not found")
+        return redirect('home')
+
+
+# -------------------------------------------Doctor Dashboard-------------------------------------------
+def doctor_dashboard(request, doctor_email):
+    """Doctor dashboard with statistics"""
+    if not request.session.get('doctor_logged_in'):
+        return redirect('fordoctor')
+    
+    try:
+        doctor = DoctorDetail.objects.get(email=doctor_email)
+        
+        # Get today's date
+        today = datetime.today().strftime('%Y-%m-%d')
+        
+        # Get statistics
+        today_appointments = bookappointment.objects.filter(
+            doctoremail=doctor_email,
+            appdate=today
+        ).count()
+        
+        total_patients = appointmenthistory.objects.filter(
+            doctoremail=doctor_email
+        ).values('useremail').distinct().count()
+        
+        total_revenue = Payment.objects.filter(
+            doctor=doctor,
+            payment_status='completed'
+        ).aggregate(total=models.Sum('amount'))['total'] or 0
+        
+        avg_rating = calculate_doctor_average_rating(doctor)
+        total_ratings = DoctorRating.objects.filter(doctor=doctor, is_verified=True).count()
+        
+        # Today's schedule
+        today_schedule = bookappointment.objects.filter(
+            doctoremail=doctor_email,
+            appdate=today
+        ).order_by('apptime')
+        
+        # Recent reviews
+        recent_reviews = DoctorRating.objects.filter(
+            doctor=doctor,
+            is_verified=True
+        ).order_by('-created_at')[:5]
+        
+        # Unread notifications
+        unread_count = get_unread_notifications_count(doctor=doctor)
+        
+        context = {
+            'doctor': doctor,
+            'email': doctor_email,
+            'today_appointments': today_appointments,
+            'total_patients': total_patients,
+            'total_revenue': total_revenue,
+            'avg_rating': avg_rating,
+            'total_ratings': total_ratings,
+            'today_schedule': today_schedule,
+            'recent_reviews': recent_reviews,
+            'unread_notifications': unread_count
+        }
+        
+        return render(request, "doctor_dashboard.html", context)
+        
+    except DoctorDetail.DoesNotExist:
+        messages.error(request, "Doctor not found")
+        return redirect('fordoctor')
