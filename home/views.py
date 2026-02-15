@@ -248,10 +248,10 @@ def register(request):
     
 # -------------------------------------------changepassword----------------------------------------------
 def otp(request):
-    if check_login==True:
-        return redirect('userhp',useremail)
-    global uotp
-    global ue
+    # Check if user is already logged in via session
+    if request.session.get('user_logged_in') and request.session.get('user_email'):
+        return redirect('userhp', request.session.get('user_email'))
+    
     if request.method == 'POST':
        
         if request.POST.get("form_type") == "useremail":
@@ -261,20 +261,24 @@ def otp(request):
                 name=udetail.name
                 otp=random.randint(10000,99999)
                 
-                uotp=str(otp)
+                # Store OTP and email in session
+                request.session['reset_otp'] = str(otp)
+                request.session['reset_email'] = uemail
                 
-                ue=uemail
-                send_mail(
-                "Change Password",
-                f"Hi {name}, your otp(one time password) is {uotp} for change password. Thank you",
-                "dentalmanagement00@gmail.com",
-                [uemail],
-                fail_silently=False,
-                )
-
-                messages.warning(request,"OTP sent to your email id successfully")
+                try:
+                    send_mail(
+                        "Change Password",
+                        f"Hi {name}, your otp(one time password) is {otp} for change password. Thank you",
+                        "dentalmanagement00@gmail.com",
+                        [uemail],
+                        fail_silently=True,
+                    )
+                    messages.warning(request,"OTP sent to your email id successfully")
+                except Exception as e:
+                    print(f"Email sending failed: {e}")
+                    messages.warning(request,f"OTP generated: {otp} (Email service unavailable)")
             else:
-                messages.warning(request,"Email is not exist!")
+                messages.warning(request,"Email does not exist!")
                 return redirect("otp")
         elif request.POST.get("form_type") == "changepassword":
             eotp=request.POST.get('enterotp')
@@ -284,13 +288,20 @@ def otp(request):
                     messages.warning(request,"Fill all details !")
                     return redirect('otp')
             
-            if eotp == uotp:
+            # Get OTP and email from session
+            stored_otp = request.session.get('reset_otp', '')
+            stored_email = request.session.get('reset_email', '')
+            
+            if eotp == stored_otp:
                 if password==cpassword:
-                    udetail=UserDetail.objects.get(email=ue)
+                    udetail=UserDetail.objects.get(email=stored_email)
                     udetail.password=password
                     udetail.save()
                     
-                    uotp=""
+                    # Clear session data
+                    request.session.pop('reset_otp', None)
+                    request.session.pop('reset_email', None)
+                    
                     messages.success(request,"Password changed successfully")
                     return redirect("login")
                 else:
@@ -308,8 +319,8 @@ def otp(request):
 
 #-------------------------------------------userhp-------------------------------------------
 def userhomepage(request,uemailid):
-    
-    if check_login==False:
+    # Check if user is logged in via session
+    if not request.session.get('user_logged_in'):
         return redirect('home')
     
     return render(request,"userhomepage.html",{'email':uemailid})
@@ -318,8 +329,8 @@ def userhomepage(request,uemailid):
 
 # ----------------------------------------appointment page------------------------------------
 def appointment(request,uemailid):
-    
-    if check_login==False:
+    # Check if user is logged in via session
+    if not request.session.get('user_logged_in'):
         return redirect('home')
     doctordetail=DoctorDetail.objects.all().order_by('name')
     
@@ -364,14 +375,15 @@ def appointment(request,uemailid):
 
 # ---------------------------------------book appointment----------------------------------------------
 def bookuserappointment(request,demailid):
-    if check_login==False:
+    # Check if user is logged in via session
+    if not request.session.get('user_logged_in'):
         return redirect('home')
     
     if request.method == 'POST':
         
         
         doctordetail=DoctorDetail.objects.get(email=demailid)
-        userdetail=UserDetail.objects.get(email=useremail)
+        userdetail=UserDetail.objects.get(email=request.session.get('user_email'))
         
         user_name=userdetail.name
         user_email=userdetail.email
@@ -391,39 +403,42 @@ def bookuserappointment(request,demailid):
             if apdate > date or apdate == date:
                 if bookappointment.objects.filter(doctoremail=demailid,appdate=apdate,apptime=aptime).exists():
                     messages.warning(request,"Please change date or time. Doctor is not available")
-                    return redirect('bookappointment',doctoremail)
+                    return redirect('bookappointment',demailid)
                 
                 if bookappointment.objects.filter(appdate=apdate,useremail=user_email).exists():
                     messages.warning(request,"Please change date. You already booked an appointment on selected date.")
-                    return redirect('bookappointment',doctoremail)
+                    return redirect('bookappointment',demailid)
                  
                 user_appoint = bookappointment(username=user_name, useremail=user_email, doctorname=doctorname, doctoremail=doctoremail,clinicname=clinicname,city=city, appdate=apdate, apptime=aptime, consultationfee=consultationfee, payment=payment)
                 user_appoint.save()
-                send_mail(
-                "Appointment Confirmation",
-                f"Hi {user_name}, Your appointment is confrimed with Dentist {doctorname} on {apdate} at {aptime}. Address of dentist is {clinicname}, {city} and dentist consultation fee is {consultationfee}. Be on time please. Thank you",
-                "dentalmanagement00@gmail.com",
-                [user_email],
-                fail_silently=False,
-                )
+                try:
+                    send_mail(
+                        "Appointment Confirmation",
+                        f"Hi {user_name}, Your appointment is confrimed with Dentist {doctorname} on {apdate} at {aptime}. Address of dentist is {clinicname}, {city} and dentist consultation fee is {consultationfee}. Be on time please. Thank you",
+                        "dentalmanagement00@gmail.com",
+                        [user_email],
+                        fail_silently=True,
+                    )
+                except Exception as e:
+                    print(f"Email sending failed: {e}")
                 messages.success(request,"Appointment booked successfully")
                 
-                return redirect('appointment',useremail)
+                return redirect('appointment',user_email)
             else:
                 messages.success(request,"Select valid date!")
                 
-                return redirect('bookappointment',doctoremail)
+                return redirect('bookappointment',demailid)
         else:
             messages.success(request,"Select all the fields!")
             
-            return redirect('bookappointment',doctoremail)
+            return redirect('bookappointment',demailid)
     return render(request,"bookappointment.html",{'demail':demailid})
 
 
 # ----------------------------------emergency appointment page----------------------------------------------
 def emergencyappointment(request,uemailid):
-    
-    if check_login==False:
+    # Check if user is logged in via session
+    if not request.session.get('user_logged_in'):
         return redirect('home')
     doctordetail=DoctorDetail.objects.all().order_by('name')
     
@@ -467,7 +482,8 @@ def emergencyappointment(request,uemailid):
 
 # -------------------------------------book emergency appointment--------------------------------------------------
 def bookemergencyappointment(request,demailid):
-    if check_login==False:
+    # Check if user is logged in via session
+    if not request.session.get('user_logged_in'):
         return redirect('home')
     
     date=str(datetime.today())
@@ -477,7 +493,7 @@ def bookemergencyappointment(request,demailid):
         
         
         doctordetail=DoctorDetail.objects.get(email=demailid)
-        userdetail=UserDetail.objects.get(email=useremail)
+        userdetail=UserDetail.objects.get(email=request.session.get('user_email'))
         
         user_name=userdetail.name
         user_email=userdetail.email
@@ -503,44 +519,49 @@ def bookemergencyappointment(request,demailid):
                 user_appoint = bookappointment(username=cuser_name, useremail=cuser_email, doctorname=doctorname, doctoremail=doctoremail,clinicname=clinicname,city=city, appdate=todaysdate, apptime=t, consultationfee=consultationfee, payment=upayment)
                 user_appoint.save()   
                 appdetail.delete()
-                send_mail(
-                "Appointment Confirmation",
-                f"Hi {cuser_name}, Your appointment time with Dentist {doctorname} on {todaysdate} at {aptime} is changed due to emergency!.The new appointment time is {t}. Address of dentist is {clinicname}, {city} and dentist consultation fee is {consultationfee}. Be on time please. Sorry for the inconvenience. Thank you",
-                "dentalmanagement00@gmail.com",
-                [cuser_email],
-                fail_silently=False,
-                )
+                try:
+                    send_mail(
+                        "Appointment Confirmation",
+                        f"Hi {cuser_name}, Your appointment time with Dentist {doctorname} on {todaysdate} at {aptime} is changed due to emergency!.The new appointment time is {t}. Address of dentist is {clinicname}, {city} and dentist consultation fee is {consultationfee}. Be on time please. Sorry for the inconvenience. Thank you",
+                        "dentalmanagement00@gmail.com",
+                        [cuser_email],
+                        fail_silently=True,
+                    )
+                except Exception as e:
+                    print(f"Email sending failed: {e}")
                 
             if bookappointment.objects.filter(appdate=todaysdate,useremail=user_email).exists():
                 messages.warning(request,"You cannot take an appointment. You already booked an appointment on selected date.")
-                return redirect('bookemergencyappointment',doctoremail)
+                return redirect('bookemergencyappointment',demailid)
                 
             user_appoint = bookappointment(username=user_name, useremail=user_email, doctorname=doctorname, doctoremail=doctoremail,clinicname=clinicname,city=city, appdate=todaysdate, apptime=aptime, consultationfee=consultfee, payment=payment)
             user_appoint.save()
-            send_mail(
-                "Appointment Confirmation",
-                f"Hi {user_name}, Your appointment is confrimed with Dentist {doctorname} on {todaysdate} at {aptime}. Address of dentist is {clinicname}, {city} and dentist consultation fee is {consultfee}. Be on time please. Thank you.",
-                "dentalmanagement00@gmail.com",
-                [user_email],
-                fail_silently=False,
+            try:
+                send_mail(
+                    "Appointment Confirmation",
+                    f"Hi {user_name}, Your appointment is confrimed with Dentist {doctorname} on {todaysdate} at {aptime}. Address of dentist is {clinicname}, {city} and dentist consultation fee is {consultfee}. Be on time please. Thank you.",
+                    "dentalmanagement00@gmail.com",
+                    [user_email],
+                    fail_silently=True,
                 )
+            except Exception as e:
+                print(f"Email sending failed: {e}")
             messages.success(request,"Appointment booked successfully")
             
-            return redirect('userhp',useremail)
+            return redirect('userhp',user_email)
             
         else:
             messages.success(request,"Select all the fields!")
             
-            return redirect('bookemergencyappointment',doctoremail)
+            return redirect('bookemergencyappointment',demailid)
     return render(request,"bookemergencyappointment.html",{'demail':demailid,'date':todaysdate})
 
 
 
 # -----------------------------------user current appointment list----------------------------------------------
-from datetime import datetime
-
 def appointmentlist(request, uemailid):
-    if not check_login:
+    # Check if user is logged in via session
+    if not request.session.get('user_logged_in'):
         return redirect('home')
 
     # Get today's date in the correct format (without time)
@@ -572,13 +593,16 @@ def appointmentlist(request, uemailid):
         
         # Delete the appointment and send cancellation email
         appdetail.delete()
-        send_mail(
-            "Appointment Cancelled",
-            f"Hi {user_name}, Your appointment is cancelled with Dentist {doctorname} on {date} at {time} successfully. Thank you.",
-            "dentalmanagement00@gmail.com",
-            [uemailid],
-            fail_silently=False,
-        )
+        try:
+            send_mail(
+                "Appointment Cancelled",
+                f"Hi {user_name}, Your appointment is cancelled with Dentist {doctorname} on {date} at {time} successfully. Thank you.",
+                "dentalmanagement00@gmail.com",
+                [uemailid],
+                fail_silently=True,
+            )
+        except Exception as e:
+            print(f"Email sending failed: {e}")
         
         # Notify the user and redirect to the updated appointment list
         messages.success(request, "Appointment cancelled successfully!")
@@ -591,7 +615,8 @@ def appointmentlist(request, uemailid):
 
 # -----------------------------------------doctor schedule page----------------------------------------------------
 def doctorschedule(request,demail):
-    if check_doclogin==False:
+    # Check if doctor is logged in via session
+    if not request.session.get('doctor_logged_in'):
         return redirect('home')
     
     tdate=str(datetime.today())
@@ -617,13 +642,16 @@ def doctorschedule(request,demail):
             appdetail= bookappointment.objects.get(useremail=useremail,appdate=date,apptime=time,doctorname=doctorname)
             user_name=appdetail.username
             appdetail.delete()
-            send_mail(
-                "Appointment Cancelled",
-                f"Hi {user_name}, Your appointment is cancelled with Dentist {doctorname} on {date} at {time} successfully.This appointment is canclled by dentist because you not come for appointment. Thank you.",
-                "dentalmanagement00@gmail.com",
-                [useremail],
-                fail_silently=False,
+            try:
+                send_mail(
+                    "Appointment Cancelled",
+                    f"Hi {user_name}, Your appointment is cancelled with Dentist {doctorname} on {date} at {time} successfully.This appointment is canclled by dentist because you not come for appointment. Thank you.",
+                    "dentalmanagement00@gmail.com",
+                    [useremail],
+                    fail_silently=True,
                 )
+            except Exception as e:
+                print(f"Email sending failed: {e}")
             messages.success(request,"Appointment cancelled successfully!")
             return redirect('doctors',demail)
         
@@ -639,7 +667,8 @@ def doctorschedule(request,demail):
 
 # ---------------------------------------------------prescription---------------------------------------------------------
 def prescription(request,uemail):
-    if check_doclogin==False:
+    # Check if doctor is logged in via session
+    if not request.session.get('doctor_logged_in'):
         return redirect('home')
     userdetail=UserDetail.objects.get(email=uemail)
     tdate=str(datetime.today())
@@ -661,9 +690,10 @@ def prescription(request,uemail):
         if prescription == "":
             messages.warning(request,"Please write prescription!")
             return redirect('prescription',uemail)
-        doctordetail=DoctorDetail.objects.get(email=doctoremail)
+        doctor_email = request.session.get('doctor_email')
+        doctordetail=DoctorDetail.objects.get(email=doctor_email)
         userdetail=UserDetail.objects.get(email=uemail)
-        appdetail=bookappointment.objects.get(useremail=uemail,doctoremail=doctoremail,appdate=todaysdate)
+        appdetail=bookappointment.objects.get(useremail=uemail,doctoremail=doctor_email,appdate=todaysdate)
         user_name=userdetail.name
         user_email=userdetail.email
         doctorname=doctordetail.name
@@ -680,7 +710,7 @@ def prescription(request,uemail):
         appdetail.delete()
         messages.success(request,"Appointment completed! ")
         
-        return redirect('doctors',docemail)
+        return redirect('doctors',doctor_email)
 
     return render(request,"prescription.html",userinfo)
 
@@ -693,7 +723,8 @@ def userlogout(request):
 
 # -------------------------------------------user history---------------------------------------------------
 def history(request, uemailid):
-    if check_login==False:
+    # Check if user is logged in via session
+    if not request.session.get('user_logged_in'):
         return redirect('home')
     
     # Get appointment history for the user
@@ -709,7 +740,8 @@ def history(request, uemailid):
 
 # -------------------------------------------user detail---------------------------------------------------
 def userdetail(request, uemailid):
-    if check_login==False:
+    # Check if user is logged in via session
+    if not request.session.get('user_logged_in'):
         return redirect('home')
     
     try:
